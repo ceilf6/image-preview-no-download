@@ -1,20 +1,22 @@
 // 图片预览器 - Background Service Worker
 // 拦截图片下载，改为在预览页面中打开
 
+// 只匹配明确的图片扩展名
 const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|avif)(\?.*)?$/i;
-const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp', 'image/x-icon', 'image/tiff', 'image/avif'];
 
 // 已处理的URL集合（防止重复处理）
 const processedUrls = new Set();
 
-// 判断是否为图片URL（通过扩展名）
+// 判断是否为图片URL（只通过扩展名判断，更严格）
 function isImageUrl(url) {
-    return IMAGE_EXTENSIONS.test(url);
-}
-
-// 判断是否为图片（通过MIME类型）
-function isImageMime(mime) {
-    return mime && IMAGE_MIME_TYPES.some(type => mime.startsWith(type));
+    try {
+        const urlObj = new URL(url);
+        const pathname = urlObj.pathname;
+        // 只检查路径部分，忽略查询参数
+        return IMAGE_EXTENSIONS.test(pathname);
+    } catch {
+        return IMAGE_EXTENSIONS.test(url);
+    }
 }
 
 // 判断是否为扩展内部页面
@@ -41,9 +43,8 @@ chrome.downloads.onCreated.addListener(async (downloadItem) => {
         return;
     }
 
-    // 检查是否为图片
-    const isImage = isImageUrl(url) || isImageMime(mime);
-    if (!isImage) {
+    // 只通过 URL 扩展名检查是否为图片（更严格）
+    if (!isImageUrl(url)) {
         console.log('⏭️ 非图片文件，跳过');
         return;
     }
