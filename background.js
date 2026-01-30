@@ -4,6 +4,9 @@
 const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|avif)(\?.*)?$/i;
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp', 'image/x-icon', 'image/tiff', 'image/avif'];
 
+// 已处理的URL集合（防止重复处理）
+const processedUrls = new Set();
+
 // 判断是否为图片URL（通过扩展名）
 function isImageUrl(url) {
     return IMAGE_EXTENSIONS.test(url);
@@ -14,26 +17,41 @@ function isImageMime(mime) {
     return mime && IMAGE_MIME_TYPES.some(type => mime.startsWith(type));
 }
 
+// 判断是否为扩展内部页面
+function isExtensionPage(url) {
+    return url && url.startsWith(chrome.runtime.getURL(''));
+}
+
 console.log('🖼️ 图片预览器 Service Worker 已启动');
 
-// 监听所有下载事件
+// 只使用 downloads API 拦截（更可靠）
 chrome.downloads.onCreated.addListener(async (downloadItem) => {
-    console.log('📥 检测到下载:', {
-        id: downloadItem.id,
-        url: downloadItem.url,
-        filename: downloadItem.filename,
-        mime: downloadItem.mime,
-        state: downloadItem.state
-    });
-
     const url = downloadItem.url;
     const mime = downloadItem.mime;
 
-    // 检查是否为图片（通过URL扩展名或MIME类型）
-    const isImage = isImageUrl(url) || isImageMime(mime);
+    console.log('📥 检测到下载:', {
+        id: downloadItem.id,
+        url: url,
+        mime: mime
+    });
 
+    // 跳过扩展内部页面的请求
+    if (isExtensionPage(url)) {
+        console.log('⏭️ 扩展内部请求，跳过');
+        return;
+    }
+
+    // 检查是否为图片
+    const isImage = isImageUrl(url) || isImageMime(mime);
     if (!isImage) {
         console.log('⏭️ 非图片文件，跳过');
+        return;
+    }
+
+    // 检查是否已处理过（防止循环）
+    if (processedUrls.has(url)) {
+        console.log('⏭️ URL已处理过，跳过');
+        processedUrls.delete(url); // 清除，允许下次处理
         return;
     }
 
@@ -47,6 +65,12 @@ chrome.downloads.onCreated.addListener(async (downloadItem) => {
     }
 
     console.log('🚫 拦截图片下载:', url);
+
+    // 标记为已处理
+    processedUrls.add(url);
+
+    // 5秒后清除标记
+    setTimeout(() => processedUrls.delete(url), 5000);
 
     try {
         // 取消下载
@@ -63,35 +87,9 @@ chrome.downloads.onCreated.addListener(async (downloadItem) => {
         console.log('✅ 预览页面已打开');
     } catch (error) {
         console.error('❌ 拦截失败:', error);
+        processedUrls.delete(url);
     }
 });
-
-// 监听导航事件（用于直接访问图片URL的情况）
-chrome.webNavigation.onBeforeNavigate.addListener(
-    async (details) => {
-        if (details.frameId !== 0) return;
-
-        const url = details.url;
-        console.log('🔗 检测到导航:', url);
-
-        if (!isImageUrl(url)) {
-            console.log('⏭️ 非图片URL，跳过');
-            return;
-        }
-
-        const result = await chrome.storage.sync.get(['previewEnabled']);
-        if (!result.previewEnabled) {
-            console.log('⏭️ 预览模式未启用，跳过');
-            return;
-        }
-
-        console.log('🚫 拦截图片导航:', url);
-
-        const previewUrl = chrome.runtime.getURL('preview.html') + '?url=' + encodeURIComponent(url);
-        chrome.tabs.update(details.tabId, { url: previewUrl });
-    },
-    { url: [{ urlMatches: '.*\\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|avif)(\\?.*)?$' }] }
-);
 
 // 监听扩展安装/更新
 chrome.runtime.onInstalled.addListener(() => {
