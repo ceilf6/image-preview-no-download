@@ -55,10 +55,12 @@ function disablePreviewMode() {
 
 // 查找所有图片链接
 function findImageLinks() {
+    // 只匹配明确的图片扩展名，不使用关键词匹配
     const selectors = [
-        'a[href*=".jpg"]', 'a[href*=".jpeg"]', 'a[href*=".png"]',
-        'a[href*=".gif"]', 'a[href*=".webp"]', 'a[href*=".svg"]',
-        'a[href*="image"]', 'a[href*="img"]', 'a[href*="photo"]'
+        'a[href$=".jpg"]', 'a[href$=".jpeg"]', 'a[href$=".png"]',
+        'a[href$=".gif"]', 'a[href$=".webp"]', 'a[href$=".svg"]',
+        'a[href$=".bmp"]', 'a[href$=".ico"]', 'a[href$=".tiff"]',
+        'a[href$=".avif"]'
     ];
 
     const links = [];
@@ -77,12 +79,18 @@ function findImageLinks() {
     return links;
 }
 
-// 判断是否为图片URL
+// 判断是否为图片URL（只通过扩展名判断，更严格）
 function isImageUrl(url) {
-    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i;
-    const imageKeywords = /(image|img|photo|picture|pic)/i;
-
-    return imageExtensions.test(url) || imageKeywords.test(url);
+    try {
+        const urlObj = new URL(url);
+        const pathname = urlObj.pathname;
+        // 只检查路径部分的扩展名，不使用关键词匹配
+        const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|avif)$/i;
+        return imageExtensions.test(pathname);
+    } catch {
+        const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|avif)(\?.*)?$/i;
+        return imageExtensions.test(url);
+    }
 }
 
 // 处理图片链接点击
