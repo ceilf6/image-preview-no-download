@@ -1,5 +1,5 @@
 // 图片预览器 - 弹出窗口脚本
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const loadingDiv = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
     const mainContent = document.getElementById('main-content');
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function init() {
         try {
             // 获取当前活动标签页
-            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
             if (!tab || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
                 showError('此页面不支持图片预览功能');
@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // 向内容脚本发送消息获取状态
-            const response = await sendMessageToTab(tab.id, {action: 'getStatus'});
+            const response = await sendMessageToTab(tab.id, { action: 'getStatus' });
 
             if (response) {
                 updateUI(response);
@@ -91,20 +91,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 切换预览模式
-    toggleButton.addEventListener('click', async function() {
+    toggleButton.addEventListener('click', async function () {
         try {
             toggleButton.disabled = true;
             toggleButton.textContent = '处理中...';
 
             // 获取当前活动标签页
-            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
             if (!tab) {
                 throw new Error('无法获取当前标签页');
             }
 
             // 发送切换消息
-            const response = await sendMessageToTab(tab.id, {action: 'togglePreview'});
+            const response = await sendMessageToTab(tab.id, { action: 'togglePreview' });
 
             if (response) {
                 updateUI(response);
@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 帮助链接点击事件
-    helpLink.addEventListener('click', function(e) {
+    helpLink.addEventListener('click', function (e) {
         e.preventDefault();
 
         const helpContent = `
@@ -236,14 +236,15 @@ document.addEventListener('DOMContentLoaded', function() {
 • 某些网站可能有跨域限制
 • 扩展仅在普通网页中工作，不支持Chrome内部页面
 
-如有问题，请检查浏览器的弹窗设置。
+如有问题，请检查浏览器的弹窗设置：
+在 chrome://settings/content/popups 中开启“网站可以发送弹出式窗口并使用重定向”
         `;
 
         alert(helpContent);
     });
 
     // 监听存储变化，同步UI状态
-    chrome.storage.onChanged.addListener(function(changes, namespace) {
+    chrome.storage.onChanged.addListener(function (changes, namespace) {
         if (namespace === 'sync' && changes.previewEnabled) {
             const isEnabled = changes.previewEnabled.newValue;
             updateUI({
@@ -254,11 +255,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // 定期刷新链接计数（用于动态内容）
-    setInterval(async function() {
+    setInterval(async function () {
         try {
-            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab && !tab.url.startsWith('chrome://')) {
-                const response = await sendMessageToTab(tab.id, {action: 'getStatus'});
+                const response = await sendMessageToTab(tab.id, { action: 'getStatus' });
                 if (response) {
                     // 只更新链接计数，不改变启用状态
                     const currentCount = parseInt(linksCount.textContent) || 0;
